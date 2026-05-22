@@ -1,44 +1,58 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fft import fft, fftfreq
+import librosa
+import soundfile as sf
 
-# 1. Setup Signal Parameters
-sampling_rate = 1000  # Hz (Samples per second)
-duration = 1.0        # Seconds
-N = int(sampling_rate * duration) # Total samples
-t = np.linspace(0, duration, N, endpoint=False) # Time vector
+signal, sr = librosa.load("song.mp3", sr=None)
+duration = librosa.get_duration(path="song.mp3")
+N = int(sr * duration)
+t = np.linspace(0, duration, N, endpoint=False)
 
-# 2. Create a Composite Signal (50Hz and 120Hz sine waves)
-# We add two waves with different amplitudes (1.0 and 0.5)
-signal = 1.0 * np.sin(2 * np.pi * 50 * t) + 0.5 * np.sin(2 * np.pi * 120 * t)
-
-# 3. Perform Fourier Transform
-# 'fft' computes the transform, 'fftfreq' calculates frequency bins
 yf = fft(signal)
-xf = fftfreq(N, 1 / sampling_rate)
+xf = fftfreq(N, 1 / sr)
 
-# 4. Filter for Positive Frequencies
-# The FFT output is symmetric; we typically only plot the positive half
 xf_positive = xf[:N//2]
 yf_magnitude = 2.0/N * np.abs(yf[:N//2]) # Normalize amplitude
 
-# 5. Plotting
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(10, 12))
 
-# Time Domain Plot
-plt.subplot(2, 1, 1)
-plt.plot(t[:200], signal[:200]) # Plot first 200 samples for clarity
+plt.subplot(4, 1, 1)
+plt.plot(t[:len(signal)], signal[:len(signal)])
 plt.title("Time Domain (Original Signal)")
 plt.xlabel("Time (s)")
 plt.ylabel("Amplitude")
+plt.grid()
 
-# Frequency Domain Plot
-plt.subplot(2, 1, 2)
+plt.subplot(4, 1, 2)
 plt.plot(xf_positive, yf_magnitude)
-plt.title("Frequency Domain (Fourier Transform)")
+plt.title("Frequency Domain (Fourier Transform of Original)")
 plt.xlabel("Frequency (Hz)")
 plt.ylabel("Amplitude")
 plt.grid()
 
+freq_shift = 20000
+shift = np.exp(2j * np.pi * freq_shift * t[:len(signal)])
+signal_shifted = np.real(signal*shift)
+yf_shifted = fft(signal_shifted)
+yf_shifted_magnitude = 2.0/N * np.abs(yf_shifted[:N//2])
+
+plt.subplot(4, 1, 3)
+plt.plot(t[:len(signal_shifted)], signal_shifted[:len(signal_shifted)])
+plt.title("Time Domain (Shifted Signal)")
+plt.xlabel("Time (s)")
+plt.ylabel("Amplitude")
+plt.grid()
+
+plt.subplot(4, 1, 4)
+plt.plot(xf_positive, yf_shifted_magnitude)
+plt.title("Frequency Domain (Fourier Transform of Shifted Signal)")
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Amplitude")
+plt.grid()
 plt.tight_layout()
-plt.show()
+plt.savefig("plot.png")
+
+sf.write("output.wav", signal_shifted, sr)
+# print(len(t), len(signal))
+# print(N, duration)
